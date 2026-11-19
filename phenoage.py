@@ -64,8 +64,8 @@ if __name__ == "__main__":
     # mortality: C-index and age-adjusted hazard ratio per 1 SD of acceleration
     ev = d["mortstat"].astype(bool)
     t = d["permth_exm"]
-    c_age = concordance_index(t, d["age"], ev)
-    c_pheno = concordance_index(t, d["phenoage"], ev)
+    c_age = concordance_index(t, -d["age"], ev)  # lifelines wants higher score = longer survival
+    c_pheno = concordance_index(t, -d["phenoage"], ev)
     d["accel_sd"] = d["accel"] / d["accel"].std()
     cph = CoxPHFitter().fit(d[["permth_exm", "mortstat", "accel_sd", "age", "sex"]],
                             duration_col="permth_exm", event_col="mortstat")
