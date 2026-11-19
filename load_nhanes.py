@@ -5,10 +5,17 @@ server refuses the download (HTTP 403), download the files by hand from the
 NHANES 2015-2016 page and put them in data/raw/.
 """
 import pathlib
+import ssl
 import urllib.request
 
 import duckdb
 import pandas as pd
+
+try:  # python.org builds on macOS ship without root certificates
+    import certifi
+    CTX = ssl.create_default_context(cafile=certifi.where())
+except ImportError:
+    CTX = ssl.create_default_context()
 
 RAW = pathlib.Path("data/raw")
 RAW.mkdir(parents=True, exist_ok=True)
@@ -23,7 +30,7 @@ def fetch(url: str, dest: pathlib.Path) -> None:
     if dest.exists():
         return
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(req) as r, open(dest, "wb") as f:
+    with urllib.request.urlopen(req, context=CTX) as r, open(dest, "wb") as f:
         f.write(r.read())
     print("downloaded", dest.name)
 
