@@ -1,0 +1,12 @@
+# data are downloaded by load_nhanes.py, never committed
+data/
+*.duckdb
+*.xpt
+*.dat
+*.csv
+*.png
+__pycache__/
+.ipynb_checkpoints/
+.Rhistory
+.RData
+.venv/

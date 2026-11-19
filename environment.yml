@@ -1,0 +1,9 @@
+name: blutalter
+channels: [conda-forge]
+dependencies:
+  - python=3.11
+  - duckdb
+  - pandas
+  - numpy
+  - matplotlib
+  - pip
