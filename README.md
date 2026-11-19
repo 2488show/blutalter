@@ -2,14 +2,14 @@
 
 How old is your blood? This project computes **PhenoAge**, a biological-age score built from nine routine blood markers plus age, for adults in the US National Health and Nutrition Examination Survey (NHANES), and tests whether being "older than your age" predicts mortality.
 
-Status: **in progress** (week 1 of 4: data pipeline done; PhenoAge next).
+Status: **in progress** (week 2 of 4 done: PhenoAge implemented and checked; pooled Cox models next).
 
 ## Plan
 
 | Step | What | Status |
 | --- | --- | --- |
 | 1 | Data pipeline: NHANES 2015–2016 + linked mortality into DuckDB, one analysis table | done |
-| 2 | PhenoAge implementation, checked against the R package BioAge | planned |
+| 2 | PhenoAge implementation, checked against the R package BioAge | done |
 | 3 | Pool NHANES cycles; Cox model of age acceleration vs. all-cause mortality | planned |
 | 4 | Machine learning (elastic net, gradient boosting) vs. PhenoAge, compared by C-index; SHAP | planned |
 
@@ -24,6 +24,8 @@ conda env create -f environment.yml
 conda activate blutalter
 python load_nhanes.py      # download + load into data/nhanes.duckdb
 python build_analysis.py   # writes data/analysis.csv
+python phenoage.py         # writes data/phenoage.csv, figures/, results/
+Rscript r/check_bioage.R   # cross-check against the BioAge R package
 ```
 
 ## Data flow: who is dropped and why
@@ -35,13 +37,31 @@ python build_analysis.py   # writes data/analysis.csv
 | Eligible for mortality follow-up | `eligstat = 1`, follow-up months present | 5,459 |
 | Complete markers | all 9 markers present, hs-CRP > 0 | 5,087 (222 deaths, 4.4%) |
 
-*Numbers are filled in from the actual run.*
+*Numbers are from the actual run.*
+
+## Results so far (NHANES 2015–2016, n = 5,087, 222 deaths)
+
+![PhenoAge vs chronological age](figures/phenoage_vs_age.png)
+
+| Check | Result |
+| --- | --- |
+| Correlation of PhenoAge with age | 0.90 |
+| Agreement with BioAge R package (original Levine coefficients) | max difference 0.0008 years on 5,077 people |
+| C-index for mortality, age alone | 0.837 |
+| C-index for mortality, PhenoAge | 0.866 |
+| Hazard ratio per 1 SD of age acceleration, adjusted for age and sex | 1.50 (95% CI 1.41–1.59) |
+
+Notes:
+- The BioAge formula returns infinity for 10 people whose predicted mortality rounds to 1 (PhenoAge 129–163 years). The Python version computes the cumulative hazard directly, so these rows stay finite. They are extreme values and are kept for now; step 3 will check whether they change the Cox results.
+- The C-index is in-sample here. Gains from PhenoAge over age are small and will be compared properly with cross-validation in step 4.
 
 ## Repository layout
 
 - `load_nhanes.py`: download and load raw files
 - `sql/`: queries, numbered in run order
 - `build_analysis.py`: builds the analysis table with unit checks
+- `phenoage.py`: PhenoAge, age acceleration, C-index and Cox model
+- `r/check_bioage.R`: cross-check against the BioAge R package
 
 ## Limitations (so far)
 
