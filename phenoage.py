@@ -13,23 +13,23 @@ import pandas as pd
 from lifelines import CoxPHFitter
 from lifelines.utils import concordance_index
 
-GAMMA = 0.0076927
-COEF = {  # Levine 2018 coefficients; inputs in the units of analysis.csv
-    "albumin_gl": -0.0336, "creat_umol": 0.0095, "glucose_mmol": 0.1953, "lncrp": 0.0954,
-    "lymph": -0.0120, "mcv": 0.0268, "rdw": 0.3306, "alp": 0.00188, "wbc": 0.0554, "age": 0.0804,
+GAMMA = 0.007692696
+COEF = {  # Levine 2018 coefficients (full precision); inputs in the units of analysis.csv
+    "albumin_gl": -0.03359355, "creat_umol": 0.009506491, "glucose_mmol": 0.1953192, "lncrp": 0.09536762,
+    "lymph": -0.01199984, "mcv": 0.02676401, "rdw": 0.3306156, "alp": 0.001868778, "wbc": 0.05542406,
+    "age": 0.08035356,
 }
-INTERCEPT = -19.9067
-HORIZON = 120  # months
+INTERCEPT = -19.90667
 
 
 def phenoage(d: pd.DataFrame) -> pd.DataFrame:
     xb = INTERCEPT + sum(c * d[k] for k, c in COEF.items())
     # -ln(1 - M) is computed directly: for low-risk people M is ~1e-6 and 1 - M loses precision
-    cum_hazard = np.exp(xb) * (np.exp(HORIZON * GAMMA) - 1) / GAMMA
+    cum_hazard = 1.51714 * np.exp(xb) / GAMMA  # = exp(xb) * (exp(120*gamma) - 1) / gamma
     out = d.copy()
     out["xb"] = xb
     out["mort_score"] = -np.expm1(-cum_hazard)
-    out["phenoage"] = 141.50225 + np.log(0.00553 * cum_hazard) / 0.090165
+    out["phenoage"] = 141.50225 + np.log(0.0055305 * cum_hazard) / 0.090165
     return out
 
 
