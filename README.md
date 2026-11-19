@@ -2,13 +2,13 @@
 
 How old is your blood? This project computes **PhenoAge**, a biological-age score built from nine routine blood markers plus age, for adults in the US National Health and Nutrition Examination Survey (NHANES), and tests whether being "older than your age" predicts mortality.
 
-Status: **in progress** (week 1 of 4: data pipeline).
+Status: **in progress** (week 1 of 4: data pipeline done; PhenoAge next).
 
 ## Plan
 
 | Step | What | Status |
 | --- | --- | --- |
-| 1 | Data pipeline: NHANES 2015–2016 + linked mortality into DuckDB, one analysis table | in progress |
+| 1 | Data pipeline: NHANES 2015–2016 + linked mortality into DuckDB, one analysis table | done |
 | 2 | PhenoAge implementation, checked against the R package BioAge | planned |
 | 3 | Pool NHANES cycles; Cox model of age acceleration vs. all-cause mortality | planned |
 | 4 | Machine learning (elastic net, gradient boosting) vs. PhenoAge, compared by C-index; SHAP | planned |
@@ -30,10 +30,10 @@ python build_analysis.py   # writes data/analysis.csv
 
 | Step | Rule | People left |
 | --- | --- | --- |
-| All participants | `demo` | [n] |
-| Adults with exam | age >= 20, `ridstatr = 2` | [n] |
-| Eligible for mortality follow-up | `eligstat = 1`, follow-up months present | [n] |
-| Complete markers | all 9 markers present, hs-CRP > 0 | [n] |
+| All participants | `demo` | 9,971 |
+| Adults with exam | age >= 20, `ridstatr = 2` | 5,474 (of 5,719 adults) |
+| Eligible for mortality follow-up | `eligstat = 1`, follow-up months present | 5,459 |
+| Complete markers | all 9 markers present, hs-CRP > 0 | 5,087 (222 deaths, 4.4%) |
 
 *Numbers are filled in from the actual run.*
 
