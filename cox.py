@@ -49,7 +49,8 @@ for c, g in d.groupby("cycle"):
     fit(f"cycle {c}", g, base)
 
 res = pd.DataFrame(rows)
-res["hr_per_5y"] = np.exp(np.log(res.hr_per_sd) / sd * 5)
+res["sd_years"] = np.where(res.model.str.contains("raw"), d.accel.std(), sd)
+res["hr_per_5y"] = np.exp(np.log(res.hr_per_sd) / res.sd_years * 5)
 ph = proportional_hazard_test(m1, d[[T, E, "accel_sd", "age", "female", "cycle"]], time_transform="rank")
 res.attrs["ph_p_accel"] = float(ph.summary.loc["accel_sd", "p"])
 res.to_csv("results/week3_cox.csv", index=False)
