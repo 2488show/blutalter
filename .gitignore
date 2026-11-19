@@ -10,3 +10,5 @@ __pycache__/
 .Rhistory
 .RData
 .venv/
+!figures/*.png
+!results/*.csv
