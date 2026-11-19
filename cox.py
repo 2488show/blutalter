@@ -12,8 +12,13 @@ from lifelines.statistics import proportional_hazard_test
 from lifelines.utils import concordance_index
 
 d = pd.read_csv("data/pooled.csv")
-sd = d.accel.std()
-d["accel_sd"] = d.accel / sd
+# The acceleration has a long right tail (a few people with dialysis-level creatinine or extreme WBC
+# reach PhenoAge > 150). Main models use it winsorised at the 0.5th/99.5th percentiles.
+lo_q, hi_q = d.accel.quantile([0.005, 0.995])
+d["accel_w"] = d.accel.clip(lo_q, hi_q)
+sd = d.accel_w.std()
+d["accel_sd"] = d.accel_w / sd
+d["accel_raw_sd"] = d.accel / d.accel.std()
 d["female"] = (d.sex == 2).astype(int)
 T, E = "permth_exm", "mortstat"
 rows = []
@@ -32,7 +37,9 @@ def fit(name, data, covars, strata=None, weights=None):
 base = ["accel_sd", "age", "female"]
 m1 = fit("main: age + sex, stratified by cycle", d, base, strata=["cycle"])
 fit("survey weights (robust SE; no strata/PSU)", d, base, strata=["cycle"], weights="weight")
-fit("drop |accel| > 5 SD", d[d.accel_sd.abs() <= 5], base, strata=["cycle"])
+raw = d.drop(columns="accel_sd").rename(columns={"accel_raw_sd": "accel_sd"})
+fit("not winsorised (raw acceleration)", raw, base, strata=["cycle"])
+fit("drop raw |accel| > 5 SD", raw[raw.accel_sd.abs() <= 5], base, strata=["cycle"])
 fit("drop deaths in first 2 years", d[~((d[E] == 1) & (d[T] < 24))], base, strata=["cycle"])
 sub = [(d.age < 60, "age < 60", base), (d.age >= 60, "age >= 60", base),
        (d.female == 0, "men", ["accel_sd", "age"]), (d.female == 1, "women", ["accel_sd", "age"])]
@@ -49,7 +56,7 @@ res.to_csv("results/week3_cox.csv", index=False)
 
 c_age = concordance_index(d[T], -d.age, d[E])
 c_pheno = concordance_index(d[T], -d.phenoage, d[E])
-pd.DataFrame([dict(sd_accel_years=sd, c_index_age=c_age, c_index_phenoage=c_pheno,
+pd.DataFrame([dict(sd_accel_years=sd, winsor_lo=lo_q, winsor_hi=hi_q, n_winsorised=int((d.accel != d.accel_w).sum()), c_index_age=c_age, c_index_phenoage=c_pheno,
                    ph_test_p_accel=res.attrs["ph_p_accel"])]).to_csv("results/week3_summary.csv", index=False)
 
 d["q"] = pd.qcut(d.accel, 4, labels=["Q1 (youngest blood)", "Q2", "Q3", "Q4 (oldest blood)"])
