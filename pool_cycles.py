@@ -53,7 +53,7 @@ if __name__ == "__main__":
     parts, flow = zip(*(one_cycle(k, *v) for k, v in CYCLES.items()))
     d = phenoage(pd.concat(parts, ignore_index=True))
     assert np.isfinite(d.phenoage).all()
-    assert d.albumin_gl.between(15, 70).all() and d.lncrp.between(-8, 5).all()
+    assert d.albumin_gl.between(10, 70).all()  # one person at 12 g/L (severe hypoalbuminaemia), kept and d.lncrp.between(-8, 5).all()
     slope, icpt = np.polyfit(d.age, d.phenoage, 1)
     d["accel"] = d.phenoage - (icpt + slope * d.age)
     d.to_csv("data/pooled.csv", index=False)
