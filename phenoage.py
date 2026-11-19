@@ -24,11 +24,12 @@ HORIZON = 120  # months
 
 def phenoage(d: pd.DataFrame) -> pd.DataFrame:
     xb = INTERCEPT + sum(c * d[k] for k, c in COEF.items())
-    m = 1 - np.exp(-np.exp(xb) * (np.exp(HORIZON * GAMMA) - 1) / GAMMA)
+    # -ln(1 - M) is computed directly: for low-risk people M is ~1e-6 and 1 - M loses precision
+    cum_hazard = np.exp(xb) * (np.exp(HORIZON * GAMMA) - 1) / GAMMA
     out = d.copy()
     out["xb"] = xb
-    out["mort_score"] = m
-    out["phenoage"] = 141.50225 + np.log(-0.00553 * np.log(1 - m)) / 0.090165
+    out["mort_score"] = -np.expm1(-cum_hazard)
+    out["phenoage"] = 141.50225 + np.log(0.00553 * cum_hazard) / 0.090165
     return out
 
 
