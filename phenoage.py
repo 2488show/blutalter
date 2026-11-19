@@ -59,7 +59,7 @@ if __name__ == "__main__":
     ax.set(xlabel="Chronological age (years)", ylabel="PhenoAge (years)",
            title=f"NHANES 2015-16, n={len(d)}, r={r:.2f}")
     fig.tight_layout()
-    fig.savefig("figures/phenoage_vs_age.png", dpi=150)
+    fig.savefig("figures/phenoage_vs_age.png", dpi=90)
 
     # mortality: C-index and age-adjusted hazard ratio per 1 SD of acceleration
     ev = d["mortstat"].astype(bool)
