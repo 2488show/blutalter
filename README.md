@@ -2,7 +2,15 @@
 
 How old is your blood? This project computes **PhenoAge**, a biological-age score built from nine routine blood markers plus age, for adults in the US National Health and Nutrition Examination Survey (NHANES), and tests whether being "older than your age" predicts mortality.
 
-Status: **in progress** (week 3 of 4 done: five pooled NHANES cycles, Cox models; machine-learning comparison next).
+Status: **v1.0, complete** (all four steps done).
+
+## Key results
+
+- **25,300 adults**, five NHANES cycles (2005–2010, 2015–2018), **2,874 deaths** over up to 14 years.
+- PhenoAge implemented from the paper and matched to the BioAge R package to within **0.0008 years**.
+- Each 1 SD (8.4 years) of PhenoAge acceleration: hazard ratio **1.54 (95% CI 1.50–1.57)** for all-cause death, adjusted for age and sex; stable across cycles, sexes, age groups and sensitivity analyses.
+- On a held-out test set (7,590 people, 863 deaths), models trained here on the same markers beat the published score: **C-index 0.876 (XGBoost Cox) and 0.873 (elastic-net Cox) vs 0.866 (PhenoAge) vs 0.842 (age alone)**. The gain over PhenoAge is small but its bootstrap 95% CI excludes zero.
+- SHAP: after age, **red cell distribution width (RDW), MCV, albumin and lymphocyte %** carry the most information.
 
 ## Plan
 
@@ -11,7 +19,7 @@ Status: **in progress** (week 3 of 4 done: five pooled NHANES cycles, Cox models
 | 1 | Data pipeline: NHANES 2015–2016 + linked mortality into DuckDB, one analysis table | done |
 | 2 | PhenoAge implementation, checked against the R package BioAge | done |
 | 3 | Pool NHANES cycles; Cox model of age acceleration vs. all-cause mortality | done |
-| 4 | Machine learning (elastic net, gradient boosting) vs. PhenoAge, compared by C-index; SHAP | planned |
+| 4 | Machine learning (elastic net, gradient boosting) vs. PhenoAge, compared by C-index; SHAP | done |
 
 ## Data
 
@@ -28,7 +36,10 @@ python phenoage.py         # writes data/phenoage.csv, figures/, results/
 Rscript r/check_bioage.R   # cross-check against the BioAge R package
 python pool_cycles.py      # five cycles -> data/pooled.csv
 python cox.py              # Cox models -> results/week3_cox.csv, figures/km_accel_quartiles.png
+python ml.py               # ML vs PhenoAge -> results/week4_*.csv, figures/week4_*.png
 ```
+
+Without conda: `python -m venv .venv && .venv/bin/pip install duckdb pandas numpy matplotlib certifi lifelines scikit-learn xgboost`. On a python.org build of Python on macOS, `certifi` is needed for the CDC downloads.
 
 ## Data flow: who is dropped and why
 
@@ -97,6 +108,32 @@ Decisions worth knowing:
 - **Dropping early deaths** barely changes the estimate, so the result is not driven only by people who were already very ill at the exam.
 - C-index in the pooled data (in-sample): age 0.843, PhenoAge 0.865.
 
+## Week 4: can a model trained here beat PhenoAge?
+
+Same inputs for every model: the nine PhenoAge markers, age and sex. The pooled data were split once into training (70%, 17,710 people, 2,011 deaths) and test (30%, 7,590 people, 863 deaths), stratified by cycle and death. All tuning used 5-fold cross-validation inside the training set; the test set was used once, at the end. Each person appears in only one set.
+
+| Model | Test C-index (95% CI) | Difference vs PhenoAge (95% CI) |
+| --- | --- | --- |
+| Age only | 0.842 (0.828–0.854) | −0.024 (−0.031 to −0.018) |
+| Age + sex (Cox) | 0.846 (0.833–0.859) | −0.020 (−0.027 to −0.013) |
+| PhenoAge (published, not refitted) | 0.866 (0.854–0.877) | reference |
+| Elastic-net Cox (trained here) | 0.873 (0.861–0.883) | +0.007 (+0.003 to +0.010) |
+| Gradient boosting, XGBoost Cox (trained here) | **0.876 (0.864–0.887)** | +0.011 (+0.007 to +0.014) |
+
+CIs are from 500 bootstrap resamples of the test set; the difference CIs are paired. Tuned settings: elastic-net penalty 0.001 (l1 ratio 0.5); XGBoost depth 4, 168 trees (`results/week4_meta.json`).
+
+![Test-set C-index](figures/week4_cindex.png)
+
+![SHAP values](figures/week4_shap.png)
+
+What the models learned (SHAP for XGBoost; per-SD hazard ratios from the elastic net in `results/week4_enet_coefs.csv`):
+- **Age** dominates, as it should for all-cause death.
+- **RDW** (HR 1.32 per SD) and **MCV** (1.24) are the strongest blood markers; higher values mean higher risk. Both are cheap parts of a routine blood count.
+- **Albumin** (0.80) and **lymphocyte %** (0.85) are protective.
+- **CRP** contributes less here than in the original PhenoAge. One likely reason is that the cycles used two different CRP assays (see limitations).
+
+How to read this: the published PhenoAge, trained on an older survey (NHANES III), is close to what can be learned from the same nine markers in newer data. Retraining gains about 0.01 in C-index. That is real but small, and the main value of PhenoAge remains that it is a fixed, transparent formula.
+
 ## Repository layout
 
 - `load_nhanes.py`: download and load raw files
@@ -107,13 +144,17 @@ Decisions worth knowing:
 - `nhanes_io.py`: download and parsing helpers shared by the pooling script
 - `pool_cycles.py`: pools five cycles, harmonises units (CRP mg/L vs mg/dL), computes PhenoAge
 - `cox.py`: Cox models, sensitivity analyses, survival figure
+- `ml.py`: train/test split, elastic-net Cox, XGBoost Cox, bootstrap C-index, SHAP
 
-## Limitations (so far)
+## Limitations
 
 - Survey weights are used only in one sensitivity model, and without the NHANES strata and primary sampling units, so its confidence interval is too narrow for population inference. Results describe the sample.
 - Serum creatinine is not recalibrated across cycles; NHANES documentation recommends adjustments for some cycles. This could shift PhenoAge slightly between cycles; the per-cycle hazard ratios are similar (1.50–1.62).
 - CRP in 2005–2010 is standard CRP, in 2015–2018 high-sensitivity CRP; both are converted to mg/dL but the assays differ at low concentrations.
-- PhenoAge was trained on NHANES III, not these cycles, so this is an external check of a published score, not a new model. Step 4 compares it with models trained here.
+- PhenoAge was trained on NHANES III, not these cycles, so steps 2–3 are an external check of a published score.
+- The test set comes from the same cycles as the training set. A stricter test would train on 2005–2010 and test on 2015–2018, but the later cycles have too few deaths (334) for a precise estimate.
+- C-index measures ranking only; calibration (whether predicted risks match observed risks) is not assessed.
+- All-cause mortality only; cause-specific analyses are possible with the `ucod_leading` field.
 
 ## Reference
 

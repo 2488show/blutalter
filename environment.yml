@@ -10,3 +10,5 @@ dependencies:
   - pip
   - pip:
       - lifelines
+      - scikit-learn
+      - xgboost
