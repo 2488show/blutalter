@@ -34,8 +34,10 @@ m1 = fit("main: age + sex, stratified by cycle", d, base, strata=["cycle"])
 fit("survey weights (robust SE; no strata/PSU)", d, base, strata=["cycle"], weights="weight")
 fit("drop |accel| > 5 SD", d[d.accel_sd.abs() <= 5], base, strata=["cycle"])
 fit("drop deaths in first 2 years", d[~((d[E] == 1) & (d[T] < 24))], base, strata=["cycle"])
-for g, lab in [(d.age < 60, "age < 60"), (d.age >= 60, "age >= 60"), (d.female == 0, "men"), (d.female == 1, "women")]:
-    fit(f"subgroup: {lab}", d[g], [c for c in base if not (c == "female" and "men" in lab)], strata=["cycle"])
+sub = [(d.age < 60, "age < 60", base), (d.age >= 60, "age >= 60", base),
+       (d.female == 0, "men", ["accel_sd", "age"]), (d.female == 1, "women", ["accel_sd", "age"])]
+for g, lab, cov in sub:
+    fit(f"subgroup: {lab}", d[g], cov, strata=["cycle"])
 for c, g in d.groupby("cycle"):
     fit(f"cycle {c}", g, base)
 
