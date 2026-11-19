@@ -1,0 +1,12 @@
+,mean_abs_shap,feature
+age,1.2159128,Age
+rdw,0.22080223,RDW
+mcv,0.16419233,MCV
+albumin_gl,0.11403679,Albumin
+lymph,0.100471705,Lymphocyte %
+female,0.088379994,Female
+log_glucose_mmol,0.08106948,Glucose
+log_alp,0.07195283,Alkaline phosphatase
+log_creat_umol,0.07193356,Creatinine
+lncrp,0.041931212,CRP
+log_wbc,0.037910763,White cells
